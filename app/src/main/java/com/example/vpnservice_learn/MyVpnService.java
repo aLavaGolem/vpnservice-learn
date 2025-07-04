@@ -1,14 +1,19 @@
 package com.example.vpnservice_learn;
 
-import android.app.PendingIntent;
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.net.VpnService;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 自定义VPN服务，继承自Android系统的VpnService
@@ -18,7 +23,12 @@ public class MyVpnService extends VpnService {
     // VPN隧道接口的文件描述符，用于管理VPN连接
     public ParcelFileDescriptor descriptor;
     private Thread thread;
-    private PendingIntent pendingIntent;
+
+    public final AtomicLong downloadNum = new AtomicLong();
+    private Timer timer;
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
+
+
     /**
      * 服务启动命令处理
      *
@@ -45,17 +55,27 @@ public class MyVpnService extends VpnService {
         try {
             if (descriptor != null) {
                 descriptor.close(); // 关闭VPN隧道接口
+                System.runFinalization();
             }
 
             if (thread != null) {
                 thread.interrupt();
             }
+
+            if (timer != null) {
+                timer.cancel();
+                timer = null;
+                downloadNum.set(0);
+            }
+
         } catch (IOException ignored) {
             // 关闭时的IO异常通常可以忽略
         } finally {
             descriptor = null; // 释放引用
             sendStatusUpdate("stop"); // 通知UI已停止
             stopSelf(); // 停止服务自身
+            onDestroy();
+
         }
     }
 
@@ -75,7 +95,6 @@ public class MyVpnService extends VpnService {
                     .addAllowedApplication(getPackageName()) // 允许本应用通过VPN
 //                    .addAllowedApplication("com.android.chrome")
                     .addAllowedApplication("com.android.browser") // 允许浏览器通过VPN
-                    .setConfigureIntent(pendingIntent)
                     .establish(); // 建立VPN连接
 
             sendStatusUpdate("start"); // 通知UI已连接
@@ -87,6 +106,8 @@ public class MyVpnService extends VpnService {
         BytesParse bytesParse = new BytesParse(this);
         thread = new Thread(bytesParse);
         thread.start();
+
+        startTimerTask();
     }
 
     /**
@@ -99,4 +120,46 @@ public class MyVpnService extends VpnService {
                 .sendBroadcast(new Intent("com.example.UPDATE_TEXT")
                         .putExtra("status", status));
     }
+
+    public void startTimerTask() {
+        timer = new Timer();
+
+        timer.schedule(new TimerTask() {
+
+            private long oldNum = downloadNum.get();
+
+            @Override
+            public void run() {
+                // 在子线程执行，需切换到主线程更新 UI
+                uiHandler.post(() -> {
+                    long now = downloadNum.get();
+                    String speed = formatNetworkSpeed(now - oldNum);
+                    oldNum = now;
+                    LocalBroadcastManager.getInstance(MyVpnService.this)
+                            .sendBroadcast(new Intent("com.example.UPDATE_TEXT")
+                                    .putExtra("speed", speed));
+                });
+            }
+        }, 0, 1000); // 延迟 0ms，间隔 1000ms（1秒）
+    }
+
+    @SuppressLint("DefaultLocale")
+    public static String formatNetworkSpeed(long bytes) {
+        double speed = bytes / 1024.0; // 默认单位为 KB
+        String unit;
+
+        if (speed < 1024) {
+            unit = "KB";
+        } else if (speed < 1024 * 1024) {
+            speed /= 1024; // 转换为 MB
+            unit = "MB";
+        } else {
+            speed /= 1024 * 1024; // 转换为 GB
+            unit = "GB";
+        }
+
+        // 保留2位小数（四舍五入）
+        return String.format("%.2f %s", speed, unit);
+    }
+
 }

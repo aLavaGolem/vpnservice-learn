@@ -30,6 +30,8 @@ import java.util.*;
 public class MainActivity extends AppCompatActivity {
     // 日志输出文本框
     private TextView outputText;
+    // 下载速度
+    private TextView speedText;
     // VPN权限请求的结果回调
     private ActivityResultLauncher<Intent> vpnLauncher;
     // VPN服务控制Intent
@@ -51,6 +53,9 @@ public class MainActivity extends AppCompatActivity {
      * 初始化界面视图和事件
      */
     private void initViews() {
+
+        speedText = findViewById(R.id.speedText);
+
         outputText = findViewById(R.id.outputText);
         // 使用原生Switch组件（兼容性警告已忽略）
         @SuppressLint("UseSwitchCompatOrMaterialCode") Switch switchButton = findViewById(R.id.vpnSwitch);
@@ -99,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onReceive(Context context, Intent intent) {
                         String status = intent.getStringExtra("status");
+                        String speed= intent.getStringExtra("speed");
                         if (status != null) {
                             // 更新开关状态以反映VPN实际状态
                             @SuppressLint("UseSwitchCompatOrMaterialCode") Switch switchBtn = findViewById(R.id.vpnSwitch);
@@ -109,6 +115,10 @@ public class MainActivity extends AppCompatActivity {
                             isProgrammaticChange = false;
 
                             appendOutput(isRunning ? "启动Vpn" : "关闭Vpn");
+                        }
+
+                        if(speed!=null){
+                            speedText.setText("下载速度："+speed);
                         }
                     }
                 },

@@ -40,7 +40,6 @@ public class TcpConnect implements PacketTool.NetworkChannel, BytesParse.Parse {
 
     private final AtomicBoolean srcFin = new AtomicBoolean();
 
-    private final AtomicBoolean dstFin = new AtomicBoolean();
 
     private final AtomicInteger sequenceNumber = new AtomicInteger(1000);
     private final AtomicInteger ackNumber = new AtomicInteger();
@@ -81,21 +80,6 @@ public class TcpConnect implements PacketTool.NetworkChannel, BytesParse.Parse {
             }
 
             if (socket == null) {
-
-                if(!fin && !psh && ack){
-                    close();
-                    return;
-                }
-
-                if (fin && psh && ack){
-                    this.dstIpPacket = ipPacket;
-                    this.sequenceNumber.set(acknowledgmentNumber);
-                    int length = tcpPacket.getPayload().getRawData().length;
-                    this.ackNumber.set(sequenceNumber1+length+1);
-                    PacketTool.sendRstPacket(this);
-                    close();
-                    return;
-                }
 
                 //rst
                 this.dstIpPacket = ipPacket;

@@ -36,7 +36,7 @@ public class UdpConnect implements PacketTool.NetworkChannel, BytesParse.Parse {
         dstIpPacket = ipPacket;
         datagramSocket = new DatagramSocket();
         boolean protect = vpnService.protect(datagramSocket);
-        datagramSocket.setSoTimeout(30000);
+        datagramSocket.setSoTimeout(3000);
 
         readFuture = executor.submit(this::read);
         writeFuture = executor.submit(this::write);

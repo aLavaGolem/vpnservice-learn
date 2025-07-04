@@ -4,13 +4,11 @@ import org.pcap4j.packet.IpPacket;
 import org.pcap4j.packet.IpSelector;
 import org.pcap4j.packet.Packet;
 import org.pcap4j.packet.TcpPacket;
-import org.pcap4j.packet.TransportPacket;
 import org.pcap4j.packet.UdpPacket;
 import org.pcap4j.packet.namednumber.IpNumber;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -36,7 +34,7 @@ public class BytesParse implements Runnable {
     @Override
     public void run() {
 
-        // 写入PC共享文件
+        // 写入windows共享文件
         executor.submit(()->{
             try {
                 pcapSmbWriter.start();
@@ -70,6 +68,9 @@ public class BytesParse implements Runnable {
                     pcapSmbWriter.addQueue(take);
 
                     fileOutputStream.write(take);
+
+                    myVpnService.downloadNum.addAndGet(take.length);
+
                 }
             } catch (Exception e) {
                 e.printStackTrace();
